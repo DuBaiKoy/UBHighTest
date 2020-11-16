@@ -1,0 +1,1 @@
+{"uuid":"3909e77781a104","version":"5.2.0","flow":[{"rem":"uibot3909e7778196bc","type":"begin","next":"uibot3909e77781ad14","x":0,"y":10},{"rem":"uibot3909e77781ad14","type":"task","desc":"流程块","in":"","out":"","file":"流程块.task","next":"","x":0,"y":100,"codeModel":0}],"dim":[{"var":"input=\"\"","type":"in"},{"var":"output=\"\"","type":"out"}]}
