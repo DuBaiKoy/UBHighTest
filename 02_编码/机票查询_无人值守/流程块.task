@@ -1,0 +1,7 @@
+dim sRet = ""
+
+sRet = Asset.GetAsset("运行结果发送邮箱地址")
+TracePrint sret
+
+sRet = Asset.GetCredential("wjd")
+TracePrint sret
