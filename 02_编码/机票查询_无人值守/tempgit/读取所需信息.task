@@ -1,0 +1,26 @@
+/*
+作者：独白KOY
+时间：2020-11-21
+本流程块的作用是取出commander中的参数转为JSON数据方便便使用
+*/
+
+dim data_Json = {}  //json数据
+
+//取出commande中的参数及凭据
+东方航空网址 = Asset.GetAsset("东方航空网址")
+南方航空网址 = Asset.GetAsset("南方航空网址")
+携程官网地址 = Asset.GetAsset("携程官网地址")
+出发地 = Asset.GetAsset("出发地")
+到达地 = Asset.GetAsset("到达地")
+运行结果发送邮箱地址 = Asset.GetAsset("运行结果发送邮箱地址")
+
+TracePrint Asset.GetCredential("UiBot考试凭据"["userName"])
+
+
+data_Json = {"东方航空网址":东方航空网址,"南方航空网址":南方航空网址,"携程官网地址":携程官网地址,"出发地":出发地,"到达地":到达地,"运行结果发送邮箱地址":运行结果发送邮箱地址}
+
+TracePrint data_Json
+
+//返回Json数据
+Return data_Json
+

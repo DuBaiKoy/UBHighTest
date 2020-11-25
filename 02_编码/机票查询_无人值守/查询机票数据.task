@@ -1,0 +1,454 @@
+/*
+作者：独白KOY
+时间：2020-11-24
+此流程的作用是打开各个网站并获取机票信息
+*/
+
+
+//接收流程输入变量
+dim data_Json = self.input
+
+/*
+    方法区
+*/
+
+/*
+    功能：查询东方航空的机票信息并返回
+    入参：浏览器对象
+    出参：东方航空的所有航班信息
+*/
+Function QueryDFHK(hWeb)
+    
+    dim dfhk_All_Data = []  //东方航空的总数据
+
+    //打开东方航空网址
+    #icon("@res:default.png")
+    WebBrowser.GoURL(hWeb,data_Json["东方航空网址"],true,{},30000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //设置出发地为广州
+    #icon("@res:o8mt4ee5-41fu-bfj2-bshh-a2m1dapv3kou.png")
+    UiElement.SetValue({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"label_ID_0"}]},data_Json["出发地"],{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //设置目的地为北京
+    #icon("@res:mjtttnjs-2shf-n7mc-qq9b-lvm2set1vtph.png")
+    UiElement.SetValue({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"label_ID_1"}]},data_Json["到达地"],{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //设置日期为当前日期+1天
+    #icon("@res:fdriaenc-00ch-iv8q-4kdg-ptsd002rdut5.png")
+    UiElement.SetValue({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"depDt"}]},g_Tomorrow,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //点击查询按钮
+    #icon("@res:jvan5859-te75-0ts1-tkcl-o7suunse8qin.png")
+    Mouse.Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"BUTTON","id":"btn_flight_search"}]},"left","dbclick",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":100,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})
+    //等待1000ms
+    Delay(1000)
+    //刷新页面
+    //Keyboard.Press("F5", "press", [],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+
+    //定义页面元素
+    dim page_Element_A = '{"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"IMG","parentid":"sylvanas_*"}]}'
+    //判断页面元素是否加载完成
+    is_Element_Exits(page_Element_A)
+    //等待1000ms
+    Delay(1000)
+    //点击价格以升序排序
+    Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"LI","parentid":"sylvanas_2","idx":3}]})
+    
+    Dialog.Notify("正在抓取东方航空的数据......", "UiBot", "0")
+    Log.Info("正在抓取东方航空的数据......")
+    //抓取数据 
+    dim data_Capture_A = UiElement.DataScrap({"html":[{"id":"sylvanas_*","tag":"DIV"}],"wnd":[{"app":"chrome","cls":"Chrome_WidgetWin_1","title":"*"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}]},{"Columns":[{"props":["text"],"selecors":[{"index":0,"prefix":"","tag":"article","value":"article"},{"className":"summary","index":0,"prefix":">","tag":"section","value":"section.summary"},{"className":"title","index":0,"prefix":">","tag":"div","value":"div.title"}]},{"props":["text"],"selecors":[{"index":0,"prefix":"","tag":"article","value":"article"},{"className":"detail","index":0,"prefix":">","tag":"section","value":"section.detail"},{"className":"head cols-3","index":0,"prefix":">","tag":"dl","value":"dl.head.cols-3"},{"index":0,"prefix":">","tag":"dd","value":"dd"}]},{"props":["text"],"selecors":[{"index":0,"prefix":"","tag":"article","value":"article"},{"className":"summary","index":0,"prefix":">","tag":"section","value":"section.summary"},{"className":"info clearfix","index":0,"prefix":">","tag":"div","value":"div.info.clearfix"}]}],"ExtractTable":0},{"objNextLinkElement":"","iMaxNumberOfPage":5,"iMaxNumberOfResult":-1,"iDelayBetweenMS":1000,"bContinueOnError":false})
+
+    //循环处理每一班的数据
+    For i=0 To UBound(data_Capture_A)
+
+        dim row_Data_A = []   //每趟航班的数据(每一班都将行数组清空，以防数据重复添加)
+        ////将抓取到的数据分割
+        dim data_Capture_A_0 = Split(data_Capture_A[i][0],"|")
+        dim data_Capture_A_2 = Split(data_Capture_A[i][2],"\n")
+        
+        //根据第二组数据的数量和特定元素的值判断本趟航班是否是+1天
+        If UBound(data_Capture_A_2) = 4
+            If data_Capture_A_2[2] = "直达"
+                到达时间 = bind_time(data_Capture_A_2[3],1)
+                到达机场 = data_Capture_A_2[4]
+                天气 = getWeather(1)
+                //TracePrint "直达不+1"
+            End If
+        Elseif UBound(data_Capture_A_2) = 5
+            If data_Capture_A_2[2] = "直达"
+                到达时间 = bind_time(data_Capture_A_2[3],2)
+                到达机场 = data_Capture_A_2[5]
+                天气 = getWeather(2)
+                //TracePrint "直达且+1"
+            End If
+            If data_Capture_A_2[3] = "经停" 
+                到达时间 = bind_time(data_Capture_A_2[4],1)
+                到达机场 = data_Capture_A_2[5]
+                天气 = getWeather(1)
+                //TracePrint "经停不+1"            
+            End If
+        End If  
+
+        dim 航空公司 = data_Capture_A_0[0]
+        dim 航班号 = Mid(data_Capture_A_0[1],2,10)
+        dim 价格 = CNumber(DigitFromStr(data_Capture_A[i][1]))
+        dim 出发时间 = Bind_Time(data_Capture_A_2[0],1)
+        dim 出发机场 = data_Capture_A_2[1]
+        //TracePrint "\n第"&i+1&"班：\n航空公司：南方航空\n航班号："&航班号&"\n价   格："&价格&"\n出发时间："&出发时间&"\n出发机场："&出发机场&"\n到达时间："&到达时间&"\n到达机场："&到达机场
+
+        //拼接行数据
+        row_Data_A = [航空公司,航班号,出发时间,到达时间,价格,出发机场,到达机场,天气]
+
+        //将行数据添加到东方航空总数据中
+        push(dfhk_All_Data,row_Data_A)
+    Next
+
+    //返回东方航空总数据
+    Return dfhk_All_Data
+End Function
+
+/*
+    功能：查询南方航空的机票信息并返回
+    入参：浏览器对象
+    出参：南方航空的所有航班信息
+*/
+Function QueryNFHK(hWeb)
+    
+    dim nfhk_All_Data = []  //南方航空的总数据
+
+    //打开南方航空的网址
+    #icon("@res:default.png")
+    WebBrowser.GoURL(hWeb,data_Json["南方航空网址"],true,{},30000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //输入出发地
+    #icon("@res:4mrjnj2n-e4hu-8gv9-7ktp-f34csghcbu9i.png")
+    UiElement.SetValue({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"fDepCity"}]},data_Json["出发地"],{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //输入到达地
+    #icon("@res:o9vd87a5-f2hn-3s3o-grss-62q4p9ptuqe4.png")
+    UiElement.SetValue({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"fArrCity"}]},data_Json["到达地"],{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //设置日期为当前+1天
+    #icon("@res:5frtmh5m-r97m-qlrf-ve3p-t9er74tn0slv.png")
+    UiElement.SetValue({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"fDepDate"}]},g_Tomorrow,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //点击查询按钮
+    #icon("@res:5hov16np-s7uo-ijbu-g6ed-5ersq3t0210t.png")
+    Mouse.Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"A","parentid":"commonbox","aaname":" 立即查询 "}]},"left","dbclick",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":0,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})
+    //等待1000ms
+    Delay(1000)
+
+    //定义元素
+    dim page_Element_B = '{"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"I","parentid":"zls-common","css-selector":"body>div>div>div>ul>li>div>div>div>i"}]}'
+    //判断元素是否加载完成
+    is_Element_Exits(page_Element_B)
+    //等待3000ms
+    Delay(3000)
+
+    //点击经济舱价格排序
+    Action('{"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"SPAN","parentid":"zls-common","aaname":"经济舱"}]}')
+    Dialog.Notify("正在抓取南方航空的数据......", "UiBot", "0")
+    Log.Info("正在抓取南方航空的数据......")
+    //抓取数据
+    dim data_Capture_B = UiElement.DataScrap({"html":[{"id":"zls-common","tag":"DIV"}],"wnd":[{"app":"chrome","cls":"Chrome_WidgetWin_1","title":"*"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}]},{"Columns":[{"props":["text"],"selecors":[{"className":"zls-flightInfoShow","index":0,"prefix":"","tag":"div","value":"div.zls-flightInfoShow"},{"className":"zls-flight","index":0,"prefix":">","tag":"div","value":"div.zls-flight"},{"className":"zls-flg-ui","index":0,"prefix":">","tag":"ul","value":"ul.zls-flg-ui"},{"index":0,"prefix":">","tag":"li","value":"li"},{"className":"fligthL","index":0,"prefix":">","tag":"div","value":"div.fligthL"},{"className":"zls-flgno","index":0,"prefix":">","tag":"div","value":"div.zls-flgno"},{"className":"zls-flgno-info zh","index":0,"prefix":">","tag":"div","value":"div.zls-flgno-info.zh"}]},{"props":["text"],"selecors":[{"className":"zls-flightInfoShow","index":0,"prefix":"","tag":"div","value":"div.zls-flightInfoShow"},{"className":"zls-flight","index":0,"prefix":">","tag":"div","value":"div.zls-flight"},{"className":"zls-flg-ui","index":0,"prefix":">","tag":"ul","value":"ul.zls-flg-ui"},{"index":0,"prefix":">","tag":"li","value":"li"},{"className":"fligthL","index":0,"prefix":">","tag":"div","value":"div.fligthL"},{"className":"zls-flgtime zls-flgtime-r zls-flgtime-dep","index":0,"prefix":">","tag":"div","value":"div.zls-flgtime.zls-flgtime-r.zls-flgtime-dep"}]},{"props":["text"],"selecors":[{"className":"zls-flightInfoShow","index":0,"prefix":"","tag":"div","value":"div.zls-flightInfoShow"},{"className":"zls-flight","index":0,"prefix":">","tag":"div","value":"div.zls-flight"},{"className":"zls-flg-ui","index":0,"prefix":">","tag":"ul","value":"ul.zls-flg-ui"},{"index":0,"prefix":">","tag":"li","value":"li"},{"className":"fligthL","index":0,"prefix":">","tag":"div","value":"div.fligthL"},{"className":"zls-flgtime zls-flgtime-arr","index":0,"prefix":">","tag":"div","value":"div.zls-flgtime.zls-flgtime-arr"}]},{"props":["text"],"selecors":[{"className":"zls-flightInfoShow","index":0,"prefix":"","tag":"div","value":"div.zls-flightInfoShow"},{"className":"zls-flight","index":0,"prefix":">","tag":"div","value":"div.zls-flight"},{"className":"zls-flg-ui","index":0,"prefix":">","tag":"ul","value":"ul.zls-flg-ui"},{"index":0,"prefix":">","tag":"li","value":"li"},{"className":"fligthR","index":0,"prefix":">","tag":"div","value":"div.fligthR"},{"className":"","index":0,"prefix":">","tag":"ul","value":"ul"},{"className":"zls-cabin-cell","index":4,"prefix":">","tag":"li","value":"li:nth-child(4)"}]}],"ExtractTable":0},{"objNextLinkElement":"","iMaxNumberOfPage":5,"iMaxNumberOfResult":-1,"iDelayBetweenMS":1000,"bContinueOnError":false})
+    //TracePrint data_Capture_B
+
+    //循环处理每一班的数据
+    For i=0 To UBound(data_Capture_B)
+        
+        dim row_Data_B = []   //每趟航班的数据(每一班都将行数组清空，以防数据重复添加)
+
+        //分割抓取到的数据
+        dim data_0 = split(data_Capture_B[i][0],"\n")
+        dim data_0_0 = split(data_0[0]," ")
+        dim data_1 = Split(data_Capture_B[i][1],"\n")  
+        dim data_2 = Split(data_Capture_B[i][2],"\n")
+        dim data_2_0 = Split(data_2[0],"+")
+        dim data_3 = Split(data_Capture_B[i][3],"\n")
+
+        航空公司 = "南方航空"
+        航班号 = data_0_0[0]
+        价格 = CNumber(DigitFromStr(data_3[0]))
+        出发时间 = bind_time(data_1[0],1)
+        出发机场 = data_1[1]
+        //判断该趟航班是否跨天
+        If len(data_2_0) = 1 
+            到达时间 = bind_time(data_2_0[0],1)
+            天气 = getWeather(1)
+        elseif len(data_2_0) = 2
+            到达时间 = bind_time(data_2_0[0],2)
+            天气 = getWeather(2)
+        End If
+        到达机场 = data_2[1]
+
+        //拼接行数据
+        row_Data_B = [航空公司,航班号,出发时间,到达时间,价格,出发机场,到达机场,天气]
+
+        //将行数据添加到南方航空的总数居中
+        push(nfhk_All_Data,row_Data_B)
+    Next
+
+    //返回南方航空总数据
+    Return nfhk_All_Data
+End Function
+
+/*
+    功能：查询携程的机票信息并返回
+    入参：浏览器对象
+    出参：携程的所有航班信息
+*/
+Function QueryXC(hWeb)
+    
+    dim xc_All_Data = []  //携程的总数据
+
+    //打开携程的网址
+    #icon("@res:default.png")
+    WebBrowser.GoURL(hWeb,data_Json["携程官网地址"],true,{},30000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //点击机票
+    Action('{"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"B","parentid":"searchBoxUl","idx":1}]}')
+    //点击选择出发地和到达地
+    #icon("@res:e2if7e5v-h9tb-kkmu-1ctk-k8c5cou41oh6.png")
+    Mouse.Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"FD_StartCity"}]},"left","click",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":0,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})
+    #icon("@res:nsbpq51f-dus5-u3ts-p6gr-1eifvjoj34gf.png")
+    Mouse.Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"A","aaname":"广州"}]},"left","click",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":0,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})    
+    #icon("@res:at16ph5n-1c84-rg5d-fo5o-1pf9eqroq46l.png")
+    Mouse.Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"FD_DestCity"}]},"left","click",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":0,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})    
+    #icon("@res:5p43ig66-lioe-crin-otf8-k5q5t6uefbps.png")
+    Mouse.Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"A","aaname":"北京"}]},"left","click",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":0,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})
+
+    //设置日期为当前+1天
+    #icon("@res:785gbcvl-qs81-hvhi-07ec-07fqv5ah5dk2.png")
+    UiElement.SetValue({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"FD_StartDate"}]},g_Tomorrow,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    //点击查询按钮
+    #icon("@res:ieuorpe7-7nlq-rvna-di9u-8tttj1pfaf1b.png")
+    Mouse.Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"FD_StartSearch"}]},"left","click",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":-90,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})
+    #icon("@res:ieuorpe7-7nlq-rvna-di9u-8tttj1pfaf1b.png")
+    Mouse.Action({"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"INPUT","id":"FD_StartSearch"}]},"left","click",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":0,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})
+    //等待1000ms
+    Delay(1000)
+
+    //定义元素
+    dim page_Element_C = '{"wnd":[{"cls":"Chrome_WidgetWin_1","title":"*","app":"chrome"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}],"html":[{"tag":"SPAN","parentid":"base_bd","aaname":"当日最低价"}]}'
+    //判断元素是否加载完成
+    is_Element_Exits(page_Element_C)
+    //等待3000ms
+    Delay(3000)
+
+    //滑动滚轮到底
+    Mouse.Wheel(100,"down", [],{"iDelayAfter":300,"iDelayBefore":200})
+    Delay(3000)
+
+    Dialog.Notify("正在抓取携程的数据......", "UiBot", "0")
+    Log.Info("正在抓取携程的数据......")
+    //抓取数据
+    dim data_Capture_C = UiElement.DataScrap({"html":[{"id":"base_bd","tag":"DIV"}],"wnd":[{"app":"chrome","cls":"Chrome_WidgetWin_1","title":"*"},{"cls":"Chrome_RenderWidgetHostHWND","title":"Chrome Legacy Window"}]},{"Columns":[{"props":["text"],"selecors":[{"className":"base_main","index":0,"prefix":"","tag":"div","value":"div.base_main"},{"className":"searchresult_content","index":0,"prefix":">","tag":"div","value":"div.searchresult_content"},{"className":"cabinV2","index":0,"prefix":">","tag":"div","value":"div.cabinV2"},{"className":"","index":0,"prefix":">","tag":"div","value":"div"},{"className":"","index":2,"prefix":">","tag":"div","value":"div:nth-child(2)"},{"className":"","index":1,"prefix":">","tag":"div","value":"div:nth-child(1)"},{"index":0,"prefix":">","tag":"div","value":"div"},{"className":"flight_card_content","index":0,"prefix":">","tag":"div","value":"div.flight_card_content"},{"className":"search_table_header","index":0,"prefix":">","tag":"div","value":"div.search_table_header"},{"className":"inb logo","index":0,"prefix":">","tag":"div","value":"div.inb.logo"},{"className":"logo-item flight_logo","index":0,"prefix":">","tag":"div","value":"div.logo-item.flight_logo"},{"className":"","index":0,"prefix":">","tag":"div","value":"div"}]},{"props":["text"],"selecors":[{"className":"base_main","index":0,"prefix":"","tag":"div","value":"div.base_main"},{"className":"searchresult_content","index":0,"prefix":">","tag":"div","value":"div.searchresult_content"},{"className":"cabinV2","index":0,"prefix":">","tag":"div","value":"div.cabinV2"},{"className":"","index":0,"prefix":">","tag":"div","value":"div"},{"className":"","index":2,"prefix":">","tag":"div","value":"div:nth-child(2)"},{"className":"","index":1,"prefix":">","tag":"div","value":"div:nth-child(1)"},{"index":0,"prefix":">","tag":"div","value":"div"},{"className":"flight_card_content","index":0,"prefix":">","tag":"div","value":"div.flight_card_content"},{"className":"search_table_header","index":0,"prefix":">","tag":"div","value":"div.search_table_header"},{"className":"inb right","index":0,"prefix":">","tag":"div","value":"div.inb.right"},{"className":"time_box","index":0,"prefix":">","tag":"div","value":"div.time_box"},{"className":"time","index":0,"prefix":">","tag":"strong","value":"strong.time"}]},{"props":["text"],"selecors":[{"className":"base_main","index":0,"prefix":"","tag":"div","value":"div.base_main"},{"className":"searchresult_content","index":0,"prefix":">","tag":"div","value":"div.searchresult_content"},{"className":"cabinV2","index":0,"prefix":">","tag":"div","value":"div.cabinV2"},{"className":"","index":0,"prefix":">","tag":"div","value":"div"},{"className":"","index":2,"prefix":">","tag":"div","value":"div:nth-child(2)"},{"className":"","index":1,"prefix":">","tag":"div","value":"div:nth-child(1)"},{"index":0,"prefix":">","tag":"div","value":"div"},{"className":"flight_card_content","index":0,"prefix":">","tag":"div","value":"div.flight_card_content"},{"className":"search_table_header","index":0,"prefix":">","tag":"div","value":"div.search_table_header"},{"className":"inb right","index":0,"prefix":">","tag":"div","value":"div.inb.right"},{"className":"airport","index":0,"prefix":">","tag":"div","value":"div.airport"}]},{"props":["text"],"selecors":[{"className":"base_main","index":0,"prefix":"","tag":"div","value":"div.base_main"},{"className":"searchresult_content","index":0,"prefix":">","tag":"div","value":"div.searchresult_content"},{"className":"cabinV2","index":0,"prefix":">","tag":"div","value":"div.cabinV2"},{"className":"","index":0,"prefix":">","tag":"div","value":"div"},{"className":"","index":2,"prefix":">","tag":"div","value":"div:nth-child(2)"},{"className":"","index":1,"prefix":">","tag":"div","value":"div:nth-child(1)"},{"index":0,"prefix":">","tag":"div","value":"div"},{"className":"flight_card_content","index":0,"prefix":">","tag":"div","value":"div.flight_card_content"},{"className":"search_table_header","index":0,"prefix":">","tag":"div","value":"div.search_table_header"},{"className":"inb left","index":0,"prefix":">","tag":"div","value":"div.inb.left"},{"className":"time_box","index":0,"prefix":">","tag":"div","value":"div.time_box"}]},{"props":["text"],"selecors":[{"className":"base_main","index":0,"prefix":"","tag":"div","value":"div.base_main"},{"className":"searchresult_content","index":0,"prefix":">","tag":"div","value":"div.searchresult_content"},{"className":"cabinV2","index":0,"prefix":">","tag":"div","value":"div.cabinV2"},{"className":"","index":0,"prefix":">","tag":"div","value":"div"},{"className":"","index":2,"prefix":">","tag":"div","value":"div:nth-child(2)"},{"className":"","index":1,"prefix":">","tag":"div","value":"div:nth-child(1)"},{"index":0,"prefix":">","tag":"div","value":"div"},{"className":"flight_card_content","index":0,"prefix":">","tag":"div","value":"div.flight_card_content"},{"className":"search_table_header","index":0,"prefix":">","tag":"div","value":"div.search_table_header"},{"className":"inb left","index":0,"prefix":">","tag":"div","value":"div.inb.left"},{"className":"airport","index":0,"prefix":">","tag":"div","value":"div.airport"}]},{"props":["text"],"selecors":[{"className":"base_main","index":0,"prefix":"","tag":"div","value":"div.base_main"},{"className":"searchresult_content","index":0,"prefix":">","tag":"div","value":"div.searchresult_content"},{"className":"cabinV2","index":0,"prefix":">","tag":"div","value":"div.cabinV2"},{"className":"","index":0,"prefix":">","tag":"div","value":"div"},{"className":"","index":2,"prefix":">","tag":"div","value":"div:nth-child(2)"},{"className":"","index":1,"prefix":">","tag":"div","value":"div:nth-child(1)"},{"index":0,"prefix":">","tag":"div","value":"div"},{"className":"flight_card_content","index":0,"prefix":">","tag":"div","value":"div.flight_card_content"},{"className":"search_table_header","index":0,"prefix":">","tag":"div","value":"div.search_table_header"},{"className":"inb price child_price","index":0,"prefix":">","tag":"div","value":"div.inb.price.child_price"},{"className":"","index":0,"prefix":">","tag":"div","value":"div"},{"className":"base_price02","index":0,"prefix":">","tag":"span","value":"span.base_price02"}]}],"ExtractTable":0},{"objNextLinkElement":"","iMaxNumberOfPage":5,"iMaxNumberOfResult":-1,"iDelayBetweenMS":1000,"bContinueOnError":false})
+    //TracePrint data_Capture_C
+
+    //循环处理每一班的数据
+    For i=0 To UBound(data_Capture_C)
+        
+        dim row_Data_C = []   //每趟航班的数据(每一班都将行数组清空，以防数据重复添加)
+
+        dim 航空公司 = Mid(data_Capture_C[i][0],1,4)
+        dim 航班号 = RTrim(Mid(data_Capture_C[i][0],5,15),"共享")
+        dim 价格 = CNumber(DigitFromStr(data_Capture_C[i][5])) 
+        dim 出发时间 =  bind_time(data_Capture_C[i][1],1)
+        dim 出发机场 = data_Capture_C[i][2]
+        dim 到达机场 = data_Capture_C[i][4]
+
+        //分割抓取到的数据
+        dim ddsj = Split(data_Capture_C[i][3],"+")
+        //判断该趟航班是否跨天
+        If UBound(ddsj) = 1
+            到达时间 = bind_time(ddsj[0],2)
+            天气 = getWeather(2)
+        Else
+            到达时间 = bind_time(ddsj[0],1)
+            天气 = getWeather(1)
+        End If
+
+        //拼接行数据
+        row_Data_C = [航空公司,航班号,出发时间,到达时间,价格,出发机场,到达机场,天气]
+
+        //将行数据添加到携程的总数据中
+        push(xc_All_Data,row_Data_C)
+    Next
+
+    //返回携程总数据
+    Return xc_All_Data
+End Function
+
+/*
+    功能：判断某元素是否加载完成，如5次重试之后还是没有，则退出程序并提示网络问题
+    入参：要判断的元素
+*/
+Function is_Element_Exits(element)
+    //循环5次判断元素是否存在
+    For i=1 To 5
+        //判断元素是否存在，赋值给is_Element_Exits
+        dim is_Element_Exits_A = UiElement.Exists(element,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+        //如果不存在则等待500ms，存在则退出循环
+        If is_Element_Exits_A = false
+            Delay(1000)
+        Else
+            break
+        End If
+        i = i+1
+    Next
+
+    //循环5次后再次判断低价日历元素是否存在，如还不存在则提示并退出程序
+    #icon("@res:vueh7dsa-d3e5-p1ro-qb95-rql5sjb7m7k4.png")
+    dim is_Element_Exits_B = UiElement.Exists(element,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200})
+    If is_Element_Exits_B = false
+        Dialog.MsgBox("请检查您的网络并稍后再试！！！","提示","0","1",0)
+        Log.Error("网络错误，未能加载出页面元素。")
+        Exit
+    End If
+End Function
+
+/*
+    功能：将普通鼠标点击事件封为方法以便使用
+    入参：元素
+*/
+Function Action(element)
+    #icon("@res:default.png")
+    Mouse.Action(element,"left","click",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":0,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})
+End Function
+
+/*
+功能：通过传入的时间字符串和增加天数变量拼接所需格式的时间字符串
+入参：时间字符串,增加天数
+出参：返回拼接完的时间字符串
+*/
+//构造时间
+Function Bind_Time(time_Str,day)
+        dim d_Date = Time.Format(Time.DateAdd("d",day,Time.Now()),"yyyy年mm月dd日")    //构造日期
+        dim date_Time = d_Date&" "&time_Str   //拼接日期和时间
+        Return cstr(date_Time)    //返回时间
+End Function
+
+/*
+功能：查询到达地天气
+入参：增加天数
+出参：返回查询到的天气情况
+*/
+Function GetWeather(days)
+    //get天气API的数据
+    data_Api = HTTP.Get("https://tianqiapi.com/api?version=v2&cityid=101010100&appid=53422641&appsecret=5e2yDGsM", {}, 60000)
+    //将字符串变量转为json变量
+    data_Json_Api = JSON.Parse(data_Api)
+    //取出一天的数据
+    data_oneDay = data_Json_Api["data"]
+
+    //将数据存入变量
+    日期 = data_oneDay[days]["date"]
+    天气 = data_oneDay[days]["wea"]
+    最高温度 = data_oneDay[days]["tem1"]
+    最低温度 = data_oneDay[days]["tem2"]
+
+    //合成需要返回的数据
+    the_Weather = 天气&" "&最高温度&" ~ "&最低温度&"摄氏度"
+    //TracePrint "本地查天气的日期是："&日期
+    //返回数据
+    Return the_Weather
+End Function
+
+/*
+    主功能区
+*/
+
+Try
+    
+    dim result = ""
+
+    //关闭Chrome浏览器
+    App.Kill("Chrome.exe")
+    //打开Chrome浏览器
+    dim hWeb = WebBrowser.Create("Chrome","baidu.com",30000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"sBrowserPath":"","sStartArgs":""})
+
+    //执行查询方法
+    dfhk = QueryDFHK(hWeb)
+    nfhk = QueryNFHK(hWeb)
+    xc = QueryXC(hWeb)
+
+    //关闭Chrome浏览器
+    App.Kill("Chrome.exe")
+    //组合东方航空和南方航空的数据
+    arrRet = concat(dfhk,nfhk)
+    //打开输出文件
+    obj_Excel = Excel.OpenExcel(@res"飞机票查询练习项目输出模板.xlsx",true,"Excel","","")
+    //最大化excel
+    #icon("@res:sneug29k-081h-a891-4hut-3crp3pcb08pb.png")
+    Window.Show({"wnd":[{"cls":"XLMAIN","title":"*Excel","app":"EXCEL"}]},"max")
+    //清空单元格
+    Excel.DeleteRow(obj_Excel,0,"3:1000",false)
+    //将东方航空和南方航空的数据写入excel中
+    Excel.WriteRange(obj_Excel,0,"C3",arrRet,false)
+    //创建一个新sheet存放携程数据
+    Excel.CreateSheet(obj_Excel,"携程","after",false)
+    //将携程数据写入到新的sheet中
+    Excel.WriteRange(obj_Excel,"携程","A1",xc,false)
+    //激活第一张sheet
+    Excel.ActiveSheet(obj_Excel,0)
+    //获取行数
+    row_Num = Excel.GetRowsCount(obj_Excel,0)
+    //分别和携程比较价格并处理
+    For i=3 To row_Num
+        //excel公式示例：=VLOOKUP(D3,携程!B:E,4,0)
+        公式1 = "=VLOOKUP(D"&i&",携程!B:E,4,0)"
+        Excel.WriteCell(obj_Excel,0,"K"&i,公式1,false)
+        //Keyboard.Press("Enter", "press", [],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+
+        //excel公式示例：=IF(ISNUMBER(K3),IF(G3<K3,C3,"携程"),C3)
+        公式2 = "=IF(ISNUMBER(K"&i&"),IF(G"&i&"<K"&i&",c"&i&",\"携程\"),C"&i&")"
+        Excel.WriteCell(obj_Excel,0,"B"&i,公式2,false)
+        //Keyboard.Press("Enter", "press", [],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+    Next
+
+    //选中比较后的单元格将其复制粘贴为数值格式
+    Excel.SelectRange(obj_Excel,0,"B3:B"&row_Num)
+    #icon("@res:dq9njouv-8kt3-54t3-smr3-1gv76ehj2rja.png")
+    Mouse.Action({"wnd":[{"app":"EXCEL","cls":"XLMAIN","title":"飞机票查询练习项目输出模板.xlsx - Excel"},{"cls":"EXCEL2","idx":1},{"cls":"MsoCommandBar","title":"Ribbon"},{"cls":"MsoWorkPane","title":"Ribbon","aaname":"Ribbon"},{"cls":"NUIPane"},{"cls":"NetUIHWND","aaname":"Ribbon"}],"ctrl":[{"role":"ROLE_SYSTEM_PANE","name":"下层功能区"},{"role":"ROLE_SYSTEM_PROPERTYPAGE","name":"开始"},{"role":"ROLE_SYSTEM_TOOLBAR","name":"剪贴板"},{"role":"ROLE_SYSTEM_GROUPING","name":"复制"},{"role":"ROLE_SYSTEM_SPLITBUTTON","name":"复制"}]},"left","click",10000,{"bContinueOnError":false,"iDelayAfter":300,"iDelayBefore":200,"bSetForeground":true,"sCursorPosition":"Center","iCursorOffsetX":0,"iCursorOffsetY":0,"sKeyModifiers":[],"sSimulate":"simulate"})
+    Keyboard.Press("V", "press", ["Ctrl","Alt"],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+    Keyboard.Press("V", "press", [],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+    Keyboard.Press("Enter", "press", [],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+    //删除作比较的列
+    Excel.DeleteColumn(obj_Excel,0,"K:K",false)
+    //删除携程的表
+    Excel.DeleteSheet(obj_Excel,"携程",false)
+
+    //复制格式
+    Excel.SelectRange(obj_Excel,0,"2：2")
+    Keyboard.Press("C", "press", ["Ctrl"],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+    Excel.SelectRange(obj_Excel,0,"3:"&row_num)
+    Keyboard.Press("V", "press", ["Ctrl","Alt"],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+    Keyboard.Press("T", "press", [],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+    Keyboard.Press("Enter", "press", [],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+    Keyboard.Press("Up", "press", [],{"iDelayAfter":300,"iDelayBefore":200,"sSimulate":"simulate"})
+
+    //将首行删除
+    Excel.DeleteRow(obj_Excel,0,"2:2",false)
+
+    //再次获取行数
+    row_Num1 = Excel.GetRowsCount(obj_Excel,0)
+    //写入序号
+    For i=2 To row_Num1
+        Excel.WriteCell(obj_Excel,0,"A"&i,i-1,false)
+    Next
+
+    //将用户名与密码写入excel中
+    Excel.WriteCell(obj_Excel,1,"B1",data_Json["用户名"],false)
+    Excel.WriteCell(obj_Excel,1,"B2",data_Json["密码"],false)
+
+    Dialog.Notify("正在另存为并关闭Excel......", "UiBot", "0")
+        Log.Info("正在另存为并关闭Excel......")
+    //保存并另存为excel
+    Excel.Save(obj_Excel)
+    dim excel_Name = g_Today&"_"&data_Json["出发地"]&"_"&data_Json["到达地"]&"_"&data_Json["用户名"]&".xlsx"
+    Excel.SaveOtherFile(obj_Excel,@res""&excel_Name&"")
+    Excel.CloseExcel(obj_Excel,true)
+
+    result = "成功"
+
+Catch exception
+    result = exception
+    
+End Try
+
+    TracePrint result
+    
+Return result
+

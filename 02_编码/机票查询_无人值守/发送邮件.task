@@ -1,0 +1,22 @@
+/*
+作者：独白KOY
+时间：2020-11-26
+此流程的作用是发送邮件
+*/
+
+//接收输入变量
+dim result = self.input
+
+//构造excel文件名
+excel_Name = g_Today&"_广州_北京_UiBot.xlsx"
+TracePrint excel_Name
+
+//如果上个流程没问题则发送正确带附件的邮件，如报错则发送错误时的信息
+If result = "成功"
+    bRet = Mail.Send("smtp.qq.com","2039946135@qq.com","wxmpftnnnzpsdfaf","1286800997@qq.com","独白KOY工作室_高磊磊_无人值守","Dear 来也 \n独白KOY工作室_高磊磊_17610158976 程序运行结果，请查阅。",@res""&excel_Name&"",465,true,"")
+Else
+    正文 = "异常流程块名："&result["File"]&"\n异常代码行号："&result["Line"]&"\n异常报错信息：异常产生的报错信息"&result["Message"]
+    TracePrint 正文
+    bRet = Mail.Send("smtp.qq.com","2039946135@qq.com","wxmpftnnnzpsdfaf","1286800997@qq.com","流程名称：机票查询_无人值守",正文,"",465,true,"")
+End If
+

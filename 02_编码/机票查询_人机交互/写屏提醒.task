@@ -1,0 +1,15 @@
+/*
+作者：独白KOY
+时间：2020-11-26
+本流程块的作用是在ub运行中展示一条信息，提示用户不要操作鼠标键盘
+*/
+
+
+dim objWindow = PrintToScreen.CreateWindow({"height":97,"resolution":{"height":1080,"width":1920},"width":935,"x":532,"y":44},true)
+
+PrintToScreen.DrawText(objWindow,"UiBot正在运行中，请勿操作键盘和鼠标，谢谢！",40,[255,0,0])
+
+Delay(10000000)
+
+PrintToScreen.CloseWindow(objWindow)
+
