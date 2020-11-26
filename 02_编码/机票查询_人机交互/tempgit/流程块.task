@@ -1,0 +1,3 @@
+dim result = self.input
+
+TracePrint result
